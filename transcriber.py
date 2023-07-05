@@ -17,16 +17,18 @@ class Transcriber:
         self.segment_filename_template = "segment_{0}.{1}"
         self.results_dir = f"result_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-    def _split_file(self):
+    def _split_file(self) -> int:
         audio = AudioSegment.from_wav(self.input_file)[self.skip_seconds*1000:]
 
         # Split the file into segments and export them
         for i, segment in enumerate(audio[::self.segment_duration_minutes*60*1000]):
             output_filename = os.path.join(self.results_dir, self.segment_filename_template.format(i, self.segment_output_format))
             segment.export(output_filename, format=self.segment_output_format)
+        
+        return i
 
-    def _transcribe(self):
-        for i in range(0, 9):
+    def _transcribe(self, count_segments: int) -> None:
+        for i in range(0, count_segments):
             segment_audio_filename = os.path.join(self.results_dir, self.segment_filename_template.format(i, self.segment_output_format))
             segment_audio= open(segment_audio_filename, "rb")
             transcript = openai.Audio.transcribe("whisper-1", segment_audio, response_format="verbose_json", language="en")
@@ -44,10 +46,11 @@ class Transcriber:
         if not os.path.exists(self.results_dir):
             os.makedirs(self.results_dir)
 
-        self._split_file()
+        print("Splitting...")
+        count_segments = self._split_file()
         print("Splitting complete!")
         print("Transcribing...")
-        self._transcribe()
+        self._transcribe(count_segments)
         print("Transcription complete!")
 
 if __name__ == "__main__":
